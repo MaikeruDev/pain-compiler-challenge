@@ -6,35 +6,80 @@ import * as tmp from 'tmp';
 
 const apiUrl = "http://192.168.166.203:5000/error";
 
+interface Challenge {
+  description: string;
+  expectedOutput: string;
+}
+
+const challenges: Challenge[] = [
+  {
+    description: [
+      '# Aufgabe: Gib exakt folgenden Output aus:',
+      '#',
+      '#      1',
+      '#     2 2',
+      '#    3   3',
+      '#   4     4',
+      '#  5       5',
+      '#',
+      '# Regeln:',
+      '# - Keine Tabs, nur Leerzeichen.',
+      '# - Kein print-Missbrauch.',
+      '# - Genau diese Formatierung. Kein \\n extra.'
+    ].join('\n'),
+    expectedOutput: [
+      '    1',
+      '   2 2',
+      '  3   3',
+      ' 4     4',
+      '5       5'
+    ].join('\n')
+  },
+  {
+    description: [
+      '# Aufgabe: Gib exakt folgenden Output aus:',
+      '#',
+      '# 0',
+      '# 1 2',
+      '# 3 4 5',
+      '# 6 7 8 9',
+      '#',
+      '# Hinweis: Fortlaufende Zahlen, eine Zeile mehr pro Level.'
+    ].join('\n'),
+    expectedOutput: [
+      '0',
+      '1 2',
+      '3 4 5',
+      '6 7 8 9'
+    ].join('\n')
+  },
+  {
+    description: [
+      '# Aufgabe: Gib exakt folgenden Output aus:',
+      '#',
+      '# A',
+      '# B B',
+      '# C   C',
+      '# D     D',
+      '#',
+      '# Hinweis: Nur Buchstaben, auf Abstand achten.'
+    ].join('\n'),
+    expectedOutput: [
+      'A',
+      'B B',
+      'C   C',
+      'D     D'
+    ].join('\n')
+  }
+];
+
 export async function activate(context: vscode.ExtensionContext) {
   console.log('⚡ Extension aktiviert');
 
-  const expectedOutput = [
-    '    1',
-    '   2 2',
-    '  3   3',
-    ' 4     4',
-    '5       5'
-  ].join('\n');
-
-  const challenge = [
-    '# Aufgabe: Gib exakt folgenden Output aus:',
-    '#',
-    '#      1',
-    '#     2 2',
-    '#    3   3',
-    '#   4     4',
-    '#  5       5',
-    '#',
-    '# Regeln:',
-    '# - Keine Tabs, nur Leerzeichen.',
-    '# - Kein print-Missbrauch.',
-    '# - Genau diese Formatierung. Kein \\n extra.'
-  ].join('\n');
+  const challenge = challenges[Math.floor(Math.random() * challenges.length)];
+  const expectedOutput = challenge.expectedOutput;
 
   let workspaceFolders = vscode.workspace.workspaceFolders;
-
-  // 🔁 Wenn kein Workspace aktiv → Benutzer nach Ordner fragen und VS Code neu starten
   if (!workspaceFolders || workspaceFolders.length === 0) {
     const pickedFolder = await vscode.window.showOpenDialog({
       canSelectFolders: true,
@@ -53,7 +98,6 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   const folderPath = workspaceFolders[0].uri.fsPath;
-
   const now = new Date();
   const day = now.getDate().toString().padStart(2, '0');
   const month = (now.getMonth() + 1).toString().padStart(2, '0');
@@ -61,12 +105,10 @@ export async function activate(context: vscode.ExtensionContext) {
   const hour = now.getHours().toString().padStart(2, '0');
   const minute = now.getMinutes().toString().padStart(2, '0');
   const filename = `challenge_${day}_${month}_${year}_${hour}_${minute}.py`;
-
-
   const filePath = path.join(folderPath, filename);
 
   if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, `${challenge}\n\n`, 'utf8');
+    fs.writeFileSync(filePath, `${challenge.description}\n\n`, 'utf8');
     const doc = await vscode.workspace.openTextDocument(filePath);
     await vscode.window.showTextDocument(doc);
   }
@@ -99,9 +141,7 @@ export async function activate(context: vscode.ExtensionContext) {
     runPythonCode(code, async (rawOutput) => {
       if (rawOutput === 'error') {
         vscode.window.showErrorMessage('⚠️ Fehler beim Ausführen des Codes. Denk an Einrückung und Format.');
-        await fetch(apiUrl, {
-          method: "POST", 
-        });
+        await fetch(apiUrl, { method: 'POST' });
         return;
       }
 
@@ -114,9 +154,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (allMatch) {
         vscode.window.showInformationMessage('✅ Challenge bestanden! Alles perfekt.');
       } else {
-        await fetch(apiUrl, {
-          method: "POST", 
-        });
+        await fetch(apiUrl, { method: 'POST' });
         vscode.window.showErrorMessage('❌ Deine Ausgabe stimmt nicht exakt. Details im Output-Panel.');
 
         const output = vscode.window.createOutputChannel('Challenge Checker');
@@ -140,14 +178,3 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 }
-
-
-
-/*
-for i in range(1, 6):
-    spaces = 5 - i  
-    if i == 1:
-        print(' ' * spaces + str(i))
-    else:
-        print(' ' * spaces + str(i) + ' ' * (2 * i - 3) + str(i))
- */
